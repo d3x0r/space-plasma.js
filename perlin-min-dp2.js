@@ -26,6 +26,8 @@ const generate_3D = false;
 //-------------------------
 // Usage : 
 
+const dotCount = 12;
+const dotSpan = dotCount*2+1;
 
 
 var config = {
@@ -44,6 +46,7 @@ var config = {
 	ctx2 : null,
 	inputData : null,
 	ctxInputData : null,
+	viewer : null,
 }
 
 let height = noise( 1.0, config );
@@ -69,7 +72,7 @@ if( typeof document !== "undefined" ) {
 		return data;
 	});
 	
-setupWorldView( "testSurface2" );
+	config.viewer = setupWorldView( "testSurface2" );
 
 } else {
 	config.lib = true;
@@ -182,9 +185,9 @@ function init( config ) {
 		if( config.canvas ) {
 			drawData( myNoise, config );
 		}
-		setTimeout( stepPlasma, 100 );
+		setTimeout( stepPlasma, 10 );
 	}
-	//stepPlasma();
+	stepPlasma();
 
 
 }
@@ -201,13 +204,13 @@ function ColorAverage( a, b, i,m) {
     return c;//`#${(c[0]<16?"0":"")+c[0].toString(16)}${(c[1]<16?"0":"")+c[1].toString(16)}${(c[2]<16?"0":"")+c[2].toString(16)}`
 }
 
-
+let oldx = 0; let oldy = 0;
 function drawData( noise, config ) {
-
+	//ctx.clearRect( 0, 0, 768, 768 );
 	//var _input = config.ctxInputData[0].ctx.getImageData(0, 0, 2048, 2048);
 	var _input = config.ctxInputData[0].data.data;
 
-    var _output = config.ctx.getImageData(0, 0, 128, 128);
+    var _output = config.ctx.getImageData(0, 0, 768, 768);
 	const outputHeight = _output.height;
 	const outputWidth = _output.width;
     var output = _output.data;
@@ -217,14 +220,32 @@ function drawData( noise, config ) {
 
     function plot(b,c,d) { 
 	//console.log( "output at", output_offset, d )
-	const output_offset = (c*outputWidth+b)*4;
+	const output_offset = Math.floor((c*outputWidth+b)*4);
         output[output_offset+0] = d[0]; 
         output[output_offset+1] = d[1]; 
         output[output_offset+2] = d[2]; 
-        output[output_offset+3] = d[3]; 
+	const newAlpha = output[output_offset+3] + d[3];
+	if( newAlpha > 255 )         output[output_offset+3] = 255; 
+	else    output[output_offset+3] = newAlpha; 
         //output_offset+=4
         //output++;
     }
+
+	
+	for( let o = 0; o < outputWidth*outputHeight*4; o += 4 ) {
+		let old = output[o+3]; if( old ) {
+			if( old > 64 ) output[o+3] = old-1;
+			else output[o+3] = Math.floor(old * 0.95);
+		}
+	}
+	const clr = [235,235,0,255];
+	for( let b of config.viewer.dots ) {
+		plot( Math.floor((b.position.x + 0.5)*768), Math.floor((0.5-b.position.y ) * 768), clr );
+		
+	}
+
+/*
+
 
 var lastTick = Date.now();
 
@@ -551,7 +572,6 @@ if( here > 0.75 ) {
 
 	}
 
-
 	var now = Date.now();
 	var delta = ( now - lastTick );
 	if( !delta ) delta = 1;
@@ -567,16 +587,18 @@ if( here > 0.75 ) {
 	}
 
 }
+*/
 
 	//if( h == 0 )
-		stepDraw();
+	//	stepDraw();
 //	console.log( "Result is %g,%g", min, max );
+	//config.ctx.clearRect( 0, 0, 768, 768 );
 	config.ctx.putImageData(_output, 0,0);
 
 //	if(0)
 	{
 		config.ctx.beginPath();
-				config.ctx.moveTo( 64,64);
+		config.ctx.moveTo( 64,64);
 		const x = Math.sin( strideangle);
 		const y = Math.cos( strideangle);
 
@@ -599,9 +621,9 @@ function updateMotion( delta, viewer ) {
 			const _input = config.ctxInputData[0].data.data;
 
 {
-	for( let x = -7; x <= 7; x++ ) for( let y = -7; y <= 7; y++ ) 
+	for( let x = -dotCount; x <= dotCount; x++ ) for( let y = -dotCount; y <= dotCount; y++ ) 
 	{
-		const b = (x+7)+(y+7)*15;
+		const b = (x+dotCount)+(y+dotCount)*dotSpan;
 //for( let b = 0; b < viewer.dots.length; b++ ) 
 		const body= viewer.dots[b];
 		const speed = viewer.speeds[b];
@@ -612,14 +634,14 @@ function updateMotion( delta, viewer ) {
 			const hx = Math.sin((here)*8*Math.PI);
 			const hy = Math.cos((here)*8*Math.PI);
 
-			speed.x = /*speed.x*0.2 +*/ 0.15 * hx;
-			speed.y = /*speed.y*0.2 +*/ -0.15 * hy;
+			speed.x = /*speed.x*0.2 +*/ 0.1 * hx;
+			speed.y = /*speed.y*0.2 +*/ -0.1 * hy;
 
 	   		
 		        if( body.position.x > 0.5 || body.position.x < -0.5 || 
 				body.position.y > 0.5 || body.position.y < -0.5 ){
-				body.position.x =  x/15;//(b%10) / 10-0.5;
-				body.position.y =  y/15;//Math.floor(b/10) / 10-0.5;
+				body.position.x =  x/dotSpan;//(b%10) / 10-0.5;
+				body.position.y =  y/dotSpan;//Math.floor(b/10) / 10-0.5;
 		
 			}else {
 				body.position.x = body.position.x + speed.x*delta;// (b%10) / 10-0.5;
@@ -753,7 +775,7 @@ export function setupWorldView( canvasId ) {
 	};
 		viewer.renderer = new THREE.WebGLRenderer( { canvas: viewer.canvas } );
 
-		viewer.camera = new THREE.PerspectiveCamera( 55, viewer.canvas.width / viewer.canvas.height, 0.01, 100 );
+		viewer.camera = new THREE.PerspectiveCamera( 53, viewer.canvas.width / viewer.canvas.height, 0.001, 100 );
 	
 viewer.renderer_a = new THREE.WebGLRenderer();
 viewer.renderTarget_a = new THREE.WebGLRenderTarget(512, 512);	
@@ -787,18 +809,18 @@ if(1) {
 
 		//var controlNatural = new NaturalCamera( viewer.camera, viewer.renderer.domElement );
 		//controlNatural.enable( );
-	for( let x = -7; x <= 7; x++ ) for( let y = -7; y <= 7; y++ ) 
+	for( let x = -dotCount; x <= dotCount; x++ ) for( let y = -dotCount; y <= dotCount; y++ ) 
 		//for( let b = 0; b < 100; b++ ) 
 		{
-			//const b = (x+7)+(y+7)*15;
+			//const b = (x+dotCount)+(y+dotCount)*15;
 		
 
 			const planeGeom = new THREE.PlaneGeometry( 0.01, 0.01 );;
 			const material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
 			const body = new THREE.Mesh( planeGeom, material );
 			body.position.z = 0.001;
-			body.position.x = x/15;//  ((b%10) / 10)-0.5;
-			body.position.y = y/15;//   (((b/10)|0) /10)-0.5;
+			body.position.x = x/dotSpan;//  ((b%10) / 10)-0.5;
+			body.position.y = y/dotSpan;//   (((b/10)|0) /10)-0.5;
 			viewer.speeds.push( new THREE.Vector3( 0, 0, 0 ) );
 			viewer.dots.push(body );
 			viewer.scene.add( body );			
