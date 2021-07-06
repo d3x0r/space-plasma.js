@@ -29,6 +29,7 @@ const generate_3D = false;
 const dotCount = 12;
 const dotSpan = dotCount*2+1;
 
+let oldx = 0; let oldy = 0;
 
 var config = {
 	patchSize : 128,
@@ -204,7 +205,6 @@ function ColorAverage( a, b, i,m) {
     return c;//`#${(c[0]<16?"0":"")+c[0].toString(16)}${(c[1]<16?"0":"")+c[1].toString(16)}${(c[2]<16?"0":"")+c[2].toString(16)}`
 }
 
-let oldx = 0; let oldy = 0;
 function drawData( noise, config ) {
 	//ctx.clearRect( 0, 0, 768, 768 );
 	//var _input = config.ctxInputData[0].ctx.getImageData(0, 0, 2048, 2048);
@@ -231,11 +231,15 @@ function drawData( noise, config ) {
         //output++;
     }
 
+	const del =	Math.abs(wO-oldx)+Math.abs(hO-oldy);
+	let mult = 0.95;
+	if( del > 3 ) mult = 0.2;
 	
 	for( let o = 0; o < outputWidth*outputHeight*4; o += 4 ) {
 		let old = output[o+3]; if( old ) {
-			if( old > 64 ) output[o+3] = old-1;
-			else output[o+3] = Math.floor(old * 0.95);
+			//if( old > 64 ) output[o+3] = old-1;
+			//else 
+			output[o+3] = Math.floor(old * mult);
 		}
 	}
 	const clr = [235,235,0,255];
@@ -621,15 +625,18 @@ function updateMotion( delta, viewer ) {
 			const _input = config.ctxInputData[0].data.data;
 
 {
+if( viewer.dots.length )
 	for( let x = -dotCount; x <= dotCount; x++ ) for( let y = -dotCount; y <= dotCount; y++ ) 
 	{
 		const b = (x+dotCount)+(y+dotCount)*dotSpan;
+		
 //for( let b = 0; b < viewer.dots.length; b++ ) 
 		const body= viewer.dots[b];
 		const speed = viewer.speeds[b];
 
 			const inputIndex = ((( 1024 +((body.position.x)/ 12.0)*2048 +wO)|0) + (( 1024 -(((body.position.y)/12)*2048)+hO )|0) * 2048 )*4;
 			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
+			
 
 			const hx = Math.sin((here)*8*Math.PI);
 			const hy = Math.cos((here)*8*Math.PI);
@@ -809,6 +816,7 @@ if(1) {
 
 		//var controlNatural = new NaturalCamera( viewer.camera, viewer.renderer.domElement );
 		//controlNatural.enable( );
+if(0)
 	for( let x = -dotCount; x <= dotCount; x++ ) for( let y = -dotCount; y <= dotCount; y++ ) 
 		//for( let b = 0; b < 100; b++ ) 
 		{
@@ -816,7 +824,7 @@ if(1) {
 		
 
 			const planeGeom = new THREE.PlaneGeometry( 0.01, 0.01 );;
-			const material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+			const material = new THREE.MeshBasicMaterial( {color: 0x4444ddd00, side: THREE.DoubleSide} );
 			const body = new THREE.Mesh( planeGeom, material );
 			body.position.z = 0.001;
 			body.position.x = x/dotSpan;//  ((b%10) / 10)-0.5;
@@ -829,7 +837,7 @@ if(1) {
 		//viewer.controls = controlNatural;
 
 	const planeGeom = new THREE.PlaneGeometry( 1, 1 );;
-	const material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+	const material = new THREE.MeshBasicMaterial( {color: 0x444400, side: THREE.DoubleSide} );
 	material.map = 	config.ctxInputData[0].tex;
 
 	const plane = new THREE.Mesh( planeGeom, material );

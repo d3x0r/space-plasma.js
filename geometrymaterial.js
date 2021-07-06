@@ -193,6 +193,8 @@ fragmentShader:`
 		vec2 temp = farxy - toHerexy;
 			//float a = 0.0;
 			float sum = 0.0;
+			float priorDel = 0.0;
+			float lastAngle ;
 			if( scale > 0.0 ) {
 				for( int n = 0; n < 100; n ++ ) {
 					float nf = float(n);
@@ -208,10 +210,14 @@ fragmentShader:`
 						float dot = ( toHerex * xa1 + toHerey * ya1 );
 						
 						if( dot > 0.0 ) {
+							if( dot > priorDel ) {
+								priorDel = dot;
+								lastAngle = val;
+							}
 							sum += dot;
 						}
 						
-						if( sum > 20.0) {
+						if( sum > 25.0) {
 							break;
 						}
 					}else {
@@ -224,6 +230,9 @@ fragmentShader:`
 						break;
 					}
 				}
+			}
+			if( sum > 2.0 ) {
+				a = lastAngle;				
 			}
 			/*
 			{
@@ -310,10 +319,10 @@ fragmentShader:`
 		gl_FragColor.g = 1.0;
 		gl_FragColor.b = 1.0;
 	}
-	else */if( sum > 5.0 ) {
-		gl_FragColor.r = gl_FragColor.r * (1.0-(sum-5.0)/10.0);
-		gl_FragColor.g = gl_FragColor.g * (1.0-(sum-5.0)/10.0);
-		gl_FragColor.b = gl_FragColor.b * (1.0-(sum-5.0)/10.0);
+	else */if( sum > 1.0 ) {
+		gl_FragColor.r = gl_FragColor.r * (1.0-(sum-1.0)/10.0);
+		gl_FragColor.g = gl_FragColor.g * (1.0-(sum-1.0)/10.0);
+		gl_FragColor.b = gl_FragColor.b * (1.0-(sum-1.0)/10.0);
 	}
 
 	// ---------- This bit modifies the color for the direction indicator
