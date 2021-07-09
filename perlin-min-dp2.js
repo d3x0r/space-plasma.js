@@ -87,8 +87,10 @@ function makeReelTexture( ctx ) {
 	let output_offset = 0;
 	for( let x = 0; x < 2048; x++ ) {
 		for( let y = 0; y < 2048; y++ ) {
-			//var here = Math.cos((x+y )/100);//height.get2( x, y, 0 );
 			var here = height.get2( x, y, 0 )/65536;
+//			var here = (Math.asin(Math.sin(x/2048 * Math.PI*64))+Math.asin(Math.sin(y/2048  * Math.PI*64)))/(Math.PI)+0.8;//height.get2( x, y, 0 )/65536;
+//d			var here = ((((x/2048 * 59)%2)-1)+(((y/2048  * 59)%2)-1))/4+0.5;//height.get2( x, y, 0 )/65536;
+			
 			//var here2 = height.get2( 2*x + 64, 2*y, 0 );
 			//var here3 = height.get2( 2*x + 128, 2*y, 0 );
 //			const output_offset = (y*32+x)*4;
@@ -106,10 +108,10 @@ function makeReelTexture( ctx ) {
 			output[output_offset+2] = ((here * 128*128*128)%128)|0;
 
 			const test = ( output[output_offset+0]*128*128 +	(output[output_offset+1] *128) +  (output[output_offset+2]) ) / (128*128*128)
-			
+/*			
 			if( Math.abs( here-test ) > 0.000001 ) 
 				console.log( "TEST", test, here, height.get2( x, y, 0 ), output[output_offset+0], here*128, output[output_offset+1], output[output_offset+2] );
-			
+*/			
 			output[output_offset+3] = 255; 
 			output_offset += 4;
 		}
@@ -232,19 +234,26 @@ function drawData( noise, config ) {
     }
 
 	const del =	Math.abs(wO-oldx)+Math.abs(hO-oldy);
-	let mult = 0.95;
+	let mult = 0.99;
 	if( del > 3 ) mult = 0.2;
 	
 	for( let o = 0; o < outputWidth*outputHeight*4; o += 4 ) {
-		let old = output[o+3]; if( old ) {
+		let old = output[o+3]; 
+		if( old ) {
 			//if( old > 64 ) output[o+3] = old-1;
 			//else 
 			output[o+3] = Math.floor(old * mult);
 		}
 	}
+	oldx = wO; oldy = hO;
 	const clr = [235,235,0,255];
+	const clr2 = [235,0,235,255];
 	for( let b of config.viewer.dots ) {
 		plot( Math.floor((b.position.x + 0.5)*768), Math.floor((0.5-b.position.y ) * 768), clr );
+		
+	}
+	for( let b of config.viewer.dots_inv ) {
+		plot( Math.floor((b.position.x + 0.5)*768), Math.floor((0.5-b.position.y ) * 768), clr2 );
 		
 	}
 
@@ -660,6 +669,42 @@ if( viewer.dots.length )
 
 
 {
+if( viewer.dots_inv.length )
+	for( let x = -dotCount; x <= dotCount; x++ ) for( let y = -dotCount; y <= dotCount; y++ ) 
+	{
+		const b = (x+dotCount)+(y+dotCount)*dotSpan;
+		
+//for( let b = 0; b < viewer.dots.length; b++ ) 
+		const body= viewer.dots_inv[b];
+		const speed = viewer.speeds[b];
+
+			const inputIndex = ((( 1024 +((body.position.x)/ 12.0)*2048 +wO)|0) + (( 1024 -(((body.position.y)/12)*2048)+hO )|0) * 2048 )*4;
+			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
+			
+
+			const hx = -Math.sin((here)*8*Math.PI);
+			const hy = -Math.cos((here)*8*Math.PI);
+
+			speed.x = /*speed.x*0.2 +*/ 0.1 * hx;
+			speed.y = /*speed.y*0.2 +*/ -0.1 * hy;
+
+	   		
+		        if( body.position.x > 0.5 || body.position.x < -0.5 || 
+				body.position.y > 0.5 || body.position.y < -0.5 ){
+				body.position.x =  x/dotSpan;//(b%10) / 10-0.5;
+				body.position.y =  y/dotSpan;//Math.floor(b/10) / 10-0.5;
+		
+			}else {
+				body.position.x = body.position.x + speed.x*delta;// (b%10) / 10-0.5;
+				body.position.y = body.position.y + speed.y*delta;// (b%10) / 10-0.5;
+			}
+
+	}
+}
+
+
+
+{
 
 			//let here = noise.get( 128*w/_output.width +wO, 128*h/_output.height+hO, h2 );
 			const inputIndex = ((( 1024 +0 +wO)|0) + (( 1024 +hO )|0) * 2048 )*4;
@@ -778,6 +823,7 @@ export function setupWorldView( canvasId ) {
 		reelAxis : null,
 		shaderMat :null,
 		dots : [],
+		dots_inv : [],
 		speeds : [],
 	};
 		viewer.renderer = new THREE.WebGLRenderer( { canvas: viewer.canvas } );
@@ -816,7 +862,7 @@ if(1) {
 
 		//var controlNatural = new NaturalCamera( viewer.camera, viewer.renderer.domElement );
 		//controlNatural.enable( );
-if(0)
+//if(0)
 	for( let x = -dotCount; x <= dotCount; x++ ) for( let y = -dotCount; y <= dotCount; y++ ) 
 		//for( let b = 0; b < 100; b++ ) 
 		{
@@ -824,7 +870,7 @@ if(0)
 		
 
 			const planeGeom = new THREE.PlaneGeometry( 0.01, 0.01 );;
-			const material = new THREE.MeshBasicMaterial( {color: 0x4444ddd00, side: THREE.DoubleSide} );
+			const material = new THREE.MeshBasicMaterial( {color: 0xaaaa00, side: THREE.DoubleSide} );
 			const body = new THREE.Mesh( planeGeom, material );
 			body.position.z = 0.001;
 			body.position.x = x/dotSpan;//  ((b%10) / 10)-0.5;
@@ -832,6 +878,16 @@ if(0)
 			viewer.speeds.push( new THREE.Vector3( 0, 0, 0 ) );
 			viewer.dots.push(body );
 			viewer.scene.add( body );			
+
+			const material2 = new THREE.MeshBasicMaterial( {color: 0xaa00aa, side: THREE.DoubleSide} );
+			const body2 = new THREE.Mesh( planeGeom, material2 );
+			body2.position.z = 0.001;
+			body2.position.x = x/dotSpan;//  ((b%10) / 10)-0.5;
+			body2.position.y = y/dotSpan;//   (((b/10)|0) /10)-0.5;
+			viewer.speeds.push( new THREE.Vector3( 0, 0, 0 ) );
+			viewer.dots_inv.push(body2 );
+			viewer.scene.add( body2 );			
+
 		}
 
 		//viewer.controls = controlNatural;

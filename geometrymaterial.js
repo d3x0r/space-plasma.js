@@ -168,7 +168,7 @@ fragmentShader:`
 
 		// ------ convert 3 color components to 1 value
 			float a = (diffuseColor.r*128.0*128.0 + diffuseColor.g*128.0 + diffuseColor.b)/(128.0*128.0/2.0);
-			
+			//float here = (asin(sin(3.14159268/2.0+a*16.0*3.14159268))/3.14159268+1.0)/2.0;
 			// had to flip the Y here... not sure where that's happening.
 			vec2 toHerexy = vec2(pixelx-0.5, 0.5-pixely); 
 
@@ -320,11 +320,18 @@ fragmentShader:`
 		gl_FragColor.b = 1.0;
 	}
 	else */if( sum > 1.0 ) {
-		gl_FragColor.r = gl_FragColor.r * (1.0-(sum-1.0)/10.0);
-		gl_FragColor.g = gl_FragColor.g * (1.0-(sum-1.0)/10.0);
-		gl_FragColor.b = gl_FragColor.b * (1.0-(sum-1.0)/10.0);
+		gl_FragColor.r = gl_FragColor.r * (1.0-(sum-1.0)/50.0);
+		gl_FragColor.g = gl_FragColor.g * (1.0-(sum-1.0)/50.0);
+		gl_FragColor.b = gl_FragColor.b * (1.0-(sum-1.0)/50.0);
 	}
-
+/*
+	if( 0.0 > 0.0 ) {
+	// shading the height map...
+		gl_FragColor.r = (gl_FragColor.r * 0.9 + here*0.1);
+		gl_FragColor.g = (gl_FragColor.g * 0.9 + here*0.1);
+		gl_FragColor.b = (gl_FragColor.b * 0.9 + here*0.1);
+	}
+*/
 	// ---------- This bit modifies the color for the direction indicator
 	float d = abs( toHerexy.x * farxy.y/farxy.x - toHerexy.y ) / sqrt( 1.0+(farxy.y*farxy.y)/(farxy.x*farxy.x) );
 	d=d/0.01;
