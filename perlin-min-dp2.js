@@ -47,10 +47,78 @@ var config = {
 	ctx2 : null,
 	inputData : null,
 	ctxInputData : null,
+	iconLocdata : null,
 	viewer : null,
+	things : null,
 }
 
+const things = new THREE.TextureLoader().load( 'images/emoji_sprite_sheet_small.png' );
+
 let height = noise( 1.0, config );
+
+
+class Thing {
+	icons = [];
+	slots = 0;
+	width = 64;
+	height = 64;
+	canvas = null;
+	constructor(canvas, data) {
+		// this works with config.iconLoc
+		// 
+
+		this.canvas = canvas;
+		this.data = data;
+		this.output = data.ctx.getImageData(0, 0, canvas.width, canvas.height);
+		this.slots = ( canvas.width *canvas.height ) / 4;  // this could just be 1...
+	
+	}
+	hideIcon( x, y ) {
+		const gx = Math.floor( x/(2048/128) );
+		const gy = Math.floor( y/(2048/128) );
+
+		const pos = gx + gy*128;
+		const output_offset = (pos*4 + 0)*4
+
+			this.output[output_offset+3] = 0; 
+		
+	}
+	addIcon( type, x, y ) {
+		// do these move?
+		
+		const gx = Math.floor( x/(2048/128) );
+		const gy = Math.floor( y/(2048/128) );
+
+
+
+		//const icon = {type:type, x:x, y:y};
+ 
+		const pos = gx + gy*128;
+		
+
+
+		const output_offset = (pos*4 + 0)*4
+
+		this.output[output_offset+0] = Math.floor(x * 128); 
+		this.output[output_offset+1] = Math.floor(((x * 128)%1)*128); 
+		this.output[output_offset+2] = Math.floor((x * 128*128*128)%128);
+		this.output[output_offset+3] = 255; // full alpha for visible.
+
+		this.output[output_offset+4] = Math.floor(y * 128); 
+		this.output[output_offset+5] = Math.floor(((y * 128)%1)*128); 
+		this.output[output_offset+6] = Math.floor((y * 128*128*128)%128);
+
+		const here = type/(64*64); // some symbol 
+			this.output[output_offset+8] = Math.floor(here * 128); 
+			this.output[output_offset+9] = Math.floor(((here * 128)%1)*128); 
+			this.output[output_offset+10] = Math.floor((here * 128*128*128)%128);
+                
+		this.data.tex.needsUpdate = true;
+		
+	}
+}
+
+
 
 if( typeof document !== "undefined" ) {
 	config.canvas = document.getElementById( "testSurface" );
@@ -58,6 +126,18 @@ if( typeof document !== "undefined" ) {
 	config.canvas2 = document.getElementById( "testSurface2" );
        // config.ctx2 = config.canvas2.getContext("2d");
 	//debugger;
+	config.iconLoc = document.createElement( "canvas") ;
+	{
+		config.iconLocdata = { ctx:config.iconLoc.getContext("2d"), tex: new THREE.CanvasTexture( config.iconLoc )
+				, data : null };
+		config.iconLoc.width = 128*4;
+		config.iconLoc.height = 128;
+		config.things = new Thing( config.iconLoc, config.iconLocdata );
+
+		for( let n = 0; n < 50; n ++ )
+			config.things.addIcon( Math.floor( 64*64*Math.random() ), Math.floor( 2048*Math.random ),Math.floor( 2048*Math.random ) );
+	}
+
 	config.inputData = [ document.createElement( "canvas") ];
 	let start = Date.now();
         config.ctxInputData = config.inputData.map( canvas=>{
@@ -78,7 +158,6 @@ if( typeof document !== "undefined" ) {
 } else {
 	config.lib = true;
 }
-
 
 
 function makeReelTexture( ctx ) {
@@ -257,358 +336,9 @@ function drawData( noise, config ) {
 		
 	}
 
-/*
 
-
-var lastTick = Date.now();
-
-const drawNodes = {
-root:null,
-length:0,
-push(n){
-	drawNodes.length++;
-	n.next = drawNodes.root;
-	drawNodes.root = n;
-},
-pop(){
-	const n = drawNodes.root;
-	if( n ) {
-		drawNodes.length--;
-		drawNodes.root = drawNodes.root.next;
-		return n;
-	}
-	return null;
-}
-
-};
-
-const nodesChecked = [];
-
-for( let i = 0; i < outputHeight; i++ ) {
-	const row = [];
-	nodesChecked.push( row );
-	for( let i = 0; i < outputWidth; i++ ) {
-		row.push(false);
-	}
-}
-
-const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],,[0,1],[1,-1],[1,0],[1,1]];
-let skips = 0;
-function stepDraw() {
-	//var h;
-	var start = Date.now();
-	//if
-	const drawList = {
-		root:null,
-		length:0,
-		push(n){
-			const x = n.x - 64;
-			const y = n.y - 64;
-			const l =  Math.sqrt(x*x+y*y);
-			n.dist = l;
-			let cur = drawList.root;
-			let prior = null;
-			while( cur && cur.dist < l ) {
-				prior = cur;
-				cur= cur.next;
-			}
-			drawList.length++;
-			if( cur ) {
-				if( prior )
-					prior.next = n;
-				else
-					drawList.root = n;
-					n.next = cur;
-			} else {
-				if( prior ) {
-					prior.next = n;
-					n.next = null;
-				} else {
-					drawList.root = n;
-					n.next = null;
-				}
-			}
-		},
-		shift() {
-			if( drawList.length ) {
-				const n = drawList.root;
-				drawList.root = n.next;
-				drawList.length--;
-				return n;
-			}
-			return null;
-		}
-	};
-	for( let i = 0; i < outputHeight; i++ ) {
-		const row = nodesChecked[i];
-		for( let i = 0; i < outputWidth; i++ ) {
-			row[i] = (false);
-		}
-	}
-
-	output_offset = 0;//config.patchSize *h;
-	const halfh = outputHeight/2;
-	const halfw = outputWidth/2;
-
-	let drawNode = drawNodes.length?drawNodes.pop():{x:halfw, y:halfh,len:0, dist : 0, next:null };
-	nodesChecked[drawNode.y][drawNode.x] = true;
-	drawList.push( drawNode );
-
-
-	
-	function doDrawNode(node) {
-
-	}
-
-const white = [0,30,0,255];
-const tmpC = [0,0,0,255];
-		const hx2 = Math.sin(strideangle);
-		const hy2 = Math.cos(strideangle);
-
-
-	while( drawNode = drawList.shift() ) {
-		//nodesChecked[drawNode.y][drawNode.x] = true;
-
-		const h = drawNode.y;
-		const w = drawNode.x;
-
-	{
-		{
-			//let here = noise.get( 128*w/_output.width +wO, 128*h/_output.height+hO, h2 );
-			const inputIndex = (( 1024 + 128*(w-halfw)/outputWidth +wO + ( (1024 +( 128*(h-halfh)/outputHeight+hO )|0) * 2048) )|0)*4;
-			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
-
-			var c1,c2,c3;
-
-			const isHere = ( w == halfw && h == halfh );
-
-			let toHerex = w - halfw;
-			let toHerey = h - halfh;
-			let del = toHerex*toHerex + toHerey*toHerey;
-			if( del ) {
-				del = Math.sqrt(del );
-				toHerex /= del;
-				toHerey /= del;
-			}
-			else {
-				toHerex = 0;
-				toHerey = 1;
-			}
-			
-			
-			let toHerex2 = 100*w/outputWidth +wO;
-			let toHerey2 = 100*h/outputHeight+hO;
-			let del2 = toHerex2*toHerex2 + toHerey2*toHerey2;
-			if( del2 ) {
-				del2 = Math.sqrt(del2 );
-				toHerex2 /= del2;
-				toHerey2 /= del2;
-			}
-			else {
-				toHerex2 = 0;
-				toHerey2 = 1;
-			}
-
-			let angle_view = (Math.acos( toHerey ))/(Math.PI);
-			if( toHerex < 0 ) angle_view = 1 - angle_view;
-
-			let angle_view2 = (Math.acos( toHerex2 ))/(Math.PI);
-			if( toHerey2 < 0 ) angle_view2 = -1+ angle_view2;
-			//if( (del2) < 50 )
-				//here = -angle_view2;
-
-
-if(1) {		
-
-			const hx = Math.sin((here)*4*Math.PI);
-			const hy = Math.cos((here)*4*Math.PI);
-
-			//const dot = toHerex*nwstride + toHerey*nhstride;
-			// angle between here to 
-			const dot = toHerex*hx + toHerey*hy;
-			// angle between my position and the direction of here
-			const angle = (	Math.acos( dot ))/(Math.PI);
-
-			const dot2 = hx*hx2 + hy*hy2;
-			
-			// angle between my forward and here
-			const angle2 = (	Math.acos( dot2 ))/(Math.PI);
-			const dot3 = Math.sin( (angle2-angle) * Math.PI );
-			//if( toHerex < 0 ) angle = Math.PI*2 - angle;
-
-			//here = angle;
-
-			if( drawNode.len > 15 )
-				c1 = white;
-			else{
-				c1 = tmpC;
-				//if(0)
-				if( dot < 0 ) {
-					tmpC[0] =  100;//-dot*250;//-dot*100;
-					tmpC[1] =  0;//-dot*100;
-					tmpC[2] =  0;//-dot*100;
-					//tmpC[1] =  0;
-				}else {
-					tmpC[0] =  0;//-dot*100;
-					tmpC[2] =  dot*250;
-					//tmpC[0] =  0;
-					
-					tmpC[1] =  + (15-drawNode.len) *10 ;
-				}
-				//if( dot < 0 )
-				//	tmpC[0] =  0 ;
-				//else
-				//tmpC[0] =  0;//dot*64 +128 ;
-				if(1)
-				if( dot2 < 0 ) {
-					if( angle2 < 0 ) {
-						//tmpC[0] +=  100-(1+dot2)*100;
-						//tmpC[2] +=  0;
-						tmpC[1] +=  100-(1+dot2)*100;
-					}
-					else{
-						tmpC[0] +=  100-(1+dot2)*100;
-						tmpC[2] +=  0;
-					}
-				}else {
-					if( dot < 0 ){
-						tmpC[0] +=  100-(1-dot2)*100;
-						tmpC[1] +=  100-(1-dot2)*100;
-						//tmpC[2] +=  100-(1-dot2)*100;
-					} else {
-						tmpC[0] +=  0;
-						tmpC[1] +=  50-(1-dot2)*50;
-					}
-				}	
-
-			if(0)
-			if(dot > 0)
-				if( dot3 < 0 ) {
-					tmpC[2] +=  +(-dot3)*50;
-					tmpC[1] += 0;
-					tmpC[0] +=  0;
-				}else {
-					tmpC[2] +=  0;
-					tmpC[1] += 0;
-					tmpC[0] +=  +(1-dot3)*50;
-				}	
-				//tmpC[2] = drawNode.len*13 ;
-			}
-
-
-//			c1[0] = (c1[0] + _input[inputIndex+0])/2;
-//			c1[1] = (c1[1] + _input[inputIndex+1])/2;
-//			c1[2] = (c1[2] + _input[inputIndex+2])/2;
-
-			//c1[0] = (toHerex+1)*127;
-			//c1[1] = (toHerey+1)*127;
-			//c1[2] = 0;
-			//c1[0] = here*255;
-			//c1[1] = 0;
-			//c1[2] = 0;
-if(0) {
-			c1[0] = here*128;
-			c1[1] = (hx+1)*128;
-			c1[2] = (hy+1)*128;
-
-if( here > 0.75 ) {
-			c1[0] = here*128;
-			c1[1] = 0;
-			c1[2] = 0;
-}else if( here > 0.5 ) {
-
-			c1[0] = 0;
-			c1[1] = 0;
-			c1[2] = here*128;
-}else if( here > 0.25 ) {
-			c1[0] = 0;
-			c1[1] = 120+here*128;
-			c1[2] = 0;
-} else {
-			c1[0] = 255.0-here*128;
-			c1[1] = 255.0-here*128;
-			c1[2] = 0;
-
-}
-}
-
-//			c1[0] = (c1[0] + _input[inputIndex+0])/2;
-//			c1[1] = (c1[1] + _input[inputIndex+1])/2;
-//			c1[2] = (c1[2] + _input[inputIndex+2])/2;
-
-
-			plot( w, h, c1 );//ColorAverage( BASE_COLOR_WHITE,
-		}			
-			//plot( w, h, ColorAverage( BASE_COLOR_BLACK,
-			//									 BASE_COLOR_LIGHTRED, (here) * 1000, 1000 ) );
-			//console.log( "%d,%d  %g", w, h, data[ h * surface.width + w ] );
-
-		for( let d = 0; d < dirs.length; d++ ) {
-			if( d ==4 ) continue;
-			const dir = dirs[d];
-			let zz = 1;
-			if( !(d & 1 ) )
-				zz = 1.414;
-			//(dir,id) of dirs )
-			if( (drawNode.x+dir[0]) >= 0 
-			  && (drawNode.x+dir[0]) < outputWidth
-				&& (drawNode.y+dir[1]) >= 0 
-			  && (drawNode.y+dir[1]) < outputHeight ){
-			 	if( !nodesChecked[drawNode.y+dir[1]][drawNode.x+dir[0]] ){
-					let newDrawNode;
-					if( drawNodes.length ){
-						newDrawNode = drawNodes.pop();
-						newDrawNode.x = drawNode.x+dir[0];
-						newDrawNode.y = drawNode.y+dir[1];
-						newDrawNode.len = drawNode.len+(here*zz/2);
-					} else  {
-						newDrawNode = {x:drawNode.x+dir[0]
-								, y:drawNode.y+dir[1]
-								, len:drawNode.len+(here*zz/2)
-								, dist: 0, next:null };
-					}
-					nodesChecked[newDrawNode.y][newDrawNode.x] = true;
-					if( drawNode.len < 52 ) 
-						drawList.push( newDrawNode );
-					else
-						drawNodes.push(newDrawNode );
-				}
-			}
-		}
-		drawNodes.push( drawNode ); 
-
-		}
-		
-	}
-	//console.log( "Rendered in:", h2, Date.now() - start );
-	//h2+=1;
-
-	}
-
-	var now = Date.now();
-	var delta = ( now - lastTick );
-	if( !delta ) delta = 1;
-	lastTick = now;
-
-
-//	hO += hstride * ( delta / 100 );
-//	wO += wstride * ( delta / 100 );
-	
-	if( h2 > h2Target ) {
-		h2 = 0;
-		h2Target += 640;
-	}
-
-}
-*/
-
-	//if( h == 0 )
-	//	stepDraw();
-//	console.log( "Result is %g,%g", min, max );
-	//config.ctx.clearRect( 0, 0, 768, 768 );
 	config.ctx.putImageData(_output, 0,0);
 
-//	if(0)
 	{
 		config.ctx.beginPath();
 		config.ctx.moveTo( 64,64);
@@ -901,6 +631,10 @@ if(1) {
 
 	viewer.shaderMat = getShaderMaterial();
 	viewer.shaderMat.uniforms.map_ul.value = config.ctxInputData[0].tex;
+        viewer.shaderMat.uniforms.icons.value = things.tex;
+        viewer.shaderMat.uniforms.icon_loc.value = config.iconLocdata.tex;
+
+
 
 	viewer.shaderBuf = getShaderBuffer();
 	

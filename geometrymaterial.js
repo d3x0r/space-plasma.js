@@ -12,6 +12,8 @@ export function getShaderMaterial() {
         y : { type: "f", value : 0 },
         angle : { type: "f", value : 0 },
         edge_only : { type: "f", value : 0 },
+        icons : { type : "t", value : null },
+        icon_loc : { type : "t", value : null },
         map_ul : { type : "t", value : null },
         map_ur : { type : "t", value : null },
         map_ll : { type : "t", value : null },
@@ -122,6 +124,8 @@ fragmentShader:`
     uniform float logDepthBufFC;
     varying float vFragDepth;
         uniform sampler2D map_ul;
+	uniform sampler2D icons;
+	uniform sampler2D icon_loc;
         uniform float x;
         uniform float y;
         uniform float angle;
