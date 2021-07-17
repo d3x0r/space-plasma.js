@@ -158,8 +158,8 @@ fragmentShader:`
 
 		// scaling here - the 8.0 is how far away...
 		// a smaller number makes for higher resolution...
-		realuv.x = 0.5 + (pixelx-0.5) / 12.0  + x1;
-		realuv.y = 0.5 + (pixely-0.5) / 12.0  - y1;
+		realuv.x = 0.5 + (pixelx-0.5) / 48.0  + x1;
+		realuv.y = 0.5 + (pixely-0.5) / 48.0  - y1;
 		
                 diffuseColor = vec4(  texture2D( map_ul, realuv ).rgb, 1.0 );
 
@@ -190,8 +190,8 @@ fragmentShader:`
 				toHerex *= scale;
 				toHerey *= scale;
 			}
-			float xdel = ( toHerex ) * 1.0/2048.0;
-			float ydel = ( toHerey ) * 1.0/2048.0;
+			float xdel = ( toHerex ) * 1.0/2048.0/4.0;
+			float ydel = ( toHerey ) * 1.0/2048.0/4.0;
 
 
 		vec2 temp = farxy - toHerexy;
@@ -200,12 +200,13 @@ fragmentShader:`
 			float priorDel = 0.0;
 			float lastAngle ;
 			if( scale > 0.0 ) {
+				float nf ;
 				for( int n = 0; n < 100; n ++ ) {
-					float nf = float(n);
+					nf = float(n);
 					vec2 pt = vec2( xdel*	nf, ydel*nf );
-					if( length(pt) < (hereLen*0.1) ) {
-						vec2 pt = vec2( 0.5+xdel*nf +x1, 0.5-ydel*nf-y1);
-			        	        vec4 color = vec4(  texture2D( map_ul, pt ).rgb, 1.0 );
+					if( length(pt) < (hereLen/48.0) ) {
+						vec2 pt2 = vec2( pt.x+0.5+x1, 0.5-pt.y-y1);
+			        	        vec4 color = vec4(  texture2D( map_ul, pt2 ).rgb, 1.0 );
 						float val = (color.r*128.0*128.0 + color.g*128.0 + color.b)/(128.0*128.0/2.0);
 				
 						float fieldAngle = mod( (val*3.14159*8.0),(2.0*3.14159268))-(3.14159268);
@@ -220,18 +221,12 @@ fragmentShader:`
 							}
 							sum += dot;
 						}
-						
-						if( sum > 25.0) {
+					
+						if( sum > 5.0) {
 							break;
 						}
 					}else {
-
-						break;
-						vec2 pt = vec2( 0.5+xdel*nf +x1, 0.5+ydel*nf+y1);
-			        	        vec4 color = vec4(  texture2D( map_ul, pt ).rgb, 1.0 );
-						float val = (color.r*128.0*128.0 + color.g*128.0 + color.b)/(128.0*128.0/2.0);
-						sum = val*100.0;
-						break;
+						break; 
 					}
 				}
 			}
@@ -324,9 +319,9 @@ fragmentShader:`
 		gl_FragColor.b = 1.0;
 	}
 	else */if( sum > 1.0 ) {
-		gl_FragColor.r = gl_FragColor.r * (1.0-(sum-1.0)/50.0);
-		gl_FragColor.g = gl_FragColor.g * (1.0-(sum-1.0)/50.0);
-		gl_FragColor.b = gl_FragColor.b * (1.0-(sum-1.0)/50.0);
+		gl_FragColor.r = gl_FragColor.r * (1.0-(sum-1.0)/10.0);
+		gl_FragColor.g = gl_FragColor.g * (1.0-(sum-1.0)/10.0);
+		gl_FragColor.b = gl_FragColor.b * (1.0-(sum-1.0)/10.0);
 	}
 /*
 	if( 0.0 > 0.0 ) {
@@ -336,12 +331,56 @@ fragmentShader:`
 		gl_FragColor.b = (gl_FragColor.b * 0.9 + here*0.1);
 	}
 */
-	// ---------- This bit modifies the color for the direction indicator
+
+
+
+vec2 pt2 = vec2(pixelx/4.0+x1, pixely/4.0-y1);
+//vec2 pt2
+vec4 p1 = texture2D(icon_loc, pt2 );
+if( p1.a > 0.5 ){
+	
+}
+
+vec4 p2 = texture2D(icon_loc, pt2 );
+if( p2.a > 0.5){
+	
+}
+vec4 p3 = texture2D(icon_loc, pt2 );
+if( p3.a > 0.5){
+	
+}
+vec4 p4 = texture2D(icon_loc, pt2 );
+if( p4.a > 0.5 ){
+	
+}
+vec4 p5 = texture2D(icon_loc, pt2 );
+if( p5.a > 0.5 ){
+	
+}
+vec4 p6 = texture2D(icon_loc, pt2 );
+if( p6.a > 0.5 ){
+	
+}
+vec4 p7 = texture2D(icon_loc, pt2 );
+if( p7.a > 0.5 ){
+	
+}
+vec4 p8 = texture2D(icon_loc, pt2 );
+if( p8.a > 0.5 ){
+	
+}
+
+//vec4 color = vec4(  texture2D( icons, pt2 ).rgb, 1.0 );
+//gl_FragColor = color;
+
+
+// ---------- This bit modifies the color for the direction indicator
 	float d = abs( toHerexy.x * farxy.y/farxy.x - toHerexy.y ) / sqrt( 1.0+(farxy.y*farxy.y)/(farxy.x*farxy.x) );
 	d=d/0.01;
 	vec2 dottmp = toHerexy*farxy;
 	float dotdir = dottmp.x+dottmp.y;
 //	float l = length(farxy*toHerexy)/length(toHerexy);
+
 		if( (dotdir) > 0.0 && dotdir< 0.3 && ( d ) < 1.0 ){
 			gl_FragColor.r *=  (d*0.5+ 0.5) ;
 			gl_FragColor.g = (1.0-d)* 0.6 + gl_FragColor.g *((d)*0.6+0.4);
@@ -359,6 +398,7 @@ fragmentShader:`
 			gl_FragColor.g = (1.0-d2)* 0.6 + gl_FragColor.g *((d2)*0.6+0.4);
 			gl_FragColor.b = (1.0-d2)* 0.6 + gl_FragColor.b *((d2)*0.6+0.4);
 		}
+
 
         }
 

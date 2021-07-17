@@ -26,7 +26,7 @@ const generate_3D = false;
 //-------------------------
 // Usage : 
 
-const dotCount = 12;
+const dotCount = 5;
 const dotSpan = dotCount*2+1;
 
 let oldx = 0; let oldy = 0;
@@ -291,12 +291,12 @@ function drawData( noise, config ) {
 	//var _input = config.ctxInputData[0].ctx.getImageData(0, 0, 2048, 2048);
 	var _input = config.ctxInputData[0].data.data;
 
-    var _output = config.ctx.getImageData(0, 0, 768, 768);
+	var _output = config.ctx.getImageData(0, 0, 768, 768);
 	const outputHeight = _output.height;
 	const outputWidth = _output.width;
-    var output = _output.data;
+	var output = _output.data;
 	var surface = null;
-    var output_offset = 0;
+	var output_offset = 0;
 	
 
     function plot(b,c,d) { 
@@ -339,18 +339,6 @@ function drawData( noise, config ) {
 
 	config.ctx.putImageData(_output, 0,0);
 
-	{
-		config.ctx.beginPath();
-		config.ctx.moveTo( 64,64);
-		const x = Math.sin( strideangle);
-		const y = Math.cos( strideangle);
-
-		config.ctx.lineTo( 64+32*x, 64+32*y );  
-
-		config.ctx.stroke();
-	}
-
-
 }
 
 
@@ -373,7 +361,7 @@ if( viewer.dots.length )
 		const body= viewer.dots[b];
 		const speed = viewer.speeds[b];
 
-			const inputIndex = ((( 1024 +((body.position.x)/ 12.0)*2048 +wO)|0) + (( 1024 -(((body.position.y)/12)*2048)+hO )|0) * 2048 )*4;
+			const inputIndex = ((( 1024 +((body.position.x)/ 48.0)*2048 +wO)|0) + (( 1024 -(((body.position.y)/48)*2048)+hO )|0) * 2048 )*4;
 			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
 			
 
@@ -408,7 +396,7 @@ if( viewer.dots_inv.length )
 		const body= viewer.dots_inv[b];
 		const speed = viewer.speeds[b];
 
-			const inputIndex = ((( 1024 +((body.position.x)/ 12.0)*2048 +wO)|0) + (( 1024 -(((body.position.y)/12)*2048)+hO )|0) * 2048 )*4;
+			const inputIndex = ((( 1024 +((body.position.x)/ 48.0)*2048 +wO)|0) + (( 1024 -(((body.position.y)/48)*2048)+hO )|0) * 2048 )*4;
 			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
 			
 
@@ -457,7 +445,7 @@ if( viewer.dots_inv.length )
 				if( slen< 0 ) slen = 0;
 			}
 
-				if( slen> 4 ) slen = 4;
+				if( slen> 2 ) slen = 2;
 
 }
 
@@ -631,7 +619,7 @@ if(1) {
 
 	viewer.shaderMat = getShaderMaterial();
 	viewer.shaderMat.uniforms.map_ul.value = config.ctxInputData[0].tex;
-        viewer.shaderMat.uniforms.icons.value = things.tex;
+        viewer.shaderMat.uniforms.icons.value = things;
         viewer.shaderMat.uniforms.icon_loc.value = config.iconLocdata.tex;
 
 
