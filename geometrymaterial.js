@@ -150,23 +150,27 @@ fragmentShader:`
 		//float pixelx = ( gl_FragCoord.x ) /512.0;
 		//float pixely = ( gl_FragCoord.y ) /512.0;
 
-		float pixelx = ( ex_texCoord.x );
-		float pixely = (1.0- ex_texCoord.y );
+		float pixelx = ( ex_texCoord.x );      // left to right 0-1.0
+		float pixely = ( ex_texCoord.y );  // top to bottom 0-1.0 
 
-		float x1 = (x)/2048.0;
-		float y1 = (y)/2048.0;
+		float x1 = (x)/2048.0;  // -0.5 to 0.5
+		float y1 = -(y)/2048.0;  // -0.5 to 0.5  (Vertical inverted)
 
-		// scaling here - the 8.0 is how far away...
-		// a smaller number makes for higher resolution...
-		realuv.x = 0.5 + (pixelx-0.5) / 48.0  + x1;
-		realuv.y = 0.5 + (pixely-0.5) / 48.0  - y1;
+		// pixel is biased to -0.5 to 0.5, scaled 
+		// position is natural.
 		
-                diffuseColor = vec4(  texture2D( map_ul, realuv ).rgb, 1.0 );
+		// a smaller number makes for higher resolution...
+		realuv.x = 0.5 + ((pixelx-0.5) / 48.0)  + x1;
+		realuv.y = 0.5 + ((pixely-0.5) / 48.0)  + y1;
+		
+        diffuseColor = vec4(  texture2D( map_ul, realuv ).rgb, 1.0 );
+			//gl_FragColor = diffuseColor;
+			//return;
 
-
+			// 'up' is from 1/2H to 0 on the texture so invert cos.
 		float dirx = sin(angle);
-		float diry = cos(angle);
-		vec2 farxy = vec2(dirx*1.0,diry*1.0);
+		float diry = cos(angle); // points down at 0
+		vec2 farxy = vec2(dirx*1.0,-diry*1.0);
 
 //( output[output_offset+0]*128*128 +	(output[output_offset+1] *128) +  (output[output_offset+2]) ) / (128*128*128)
 
@@ -174,22 +178,23 @@ fragmentShader:`
 			float a = (diffuseColor.r*128.0*128.0 + diffuseColor.g*128.0 + diffuseColor.b)/(128.0*128.0/2.0);
 			//float here = (asin(sin(3.14159268/2.0+a*16.0*3.14159268))/3.14159268+1.0)/2.0;
 			// had to flip the Y here... not sure where that's happening.
-			vec2 toHerexy = vec2(pixelx-0.5, 0.5-pixely); 
+			vec2 toHerexy = vec2(pixelx-0.5, pixely-0.5 ); 
 
 			float toHerex = (pixelx-0.5);
-			float toHerey = (0.5-pixely);
+			float toHerey = (pixely-0.5);
 
 			float scale = sqrt(toHerex*toHerex + toHerey*toHerey);
 			float hereLen = scale;
-			if( scale < 0.00000001 ) {
-				toHerex = 0.0;
-				toHerey = 1.0;
-				scale = 1.0;
+			if( scale < 0.000001 ) { // here.
+				toHerex = dirx;
+				toHerey = diry;
+				scale = 0.0;
 			}else { 
 				scale = 1.0/scale;
 				toHerex *= scale;
 				toHerey *= scale;
 			}
+			
 			float xdel = ( toHerex ) * 1.0/2048.0/4.0;
 			float ydel = ( toHerey ) * 1.0/2048.0/4.0;
 
@@ -206,9 +211,9 @@ fragmentShader:`
 					vec2 pt = vec2( xdel*	nf, ydel*nf );
 					if( length(pt) < (hereLen/48.0) ) {
 						vec2 pt2 = vec2( pt.x+0.5+x1, 0.5-pt.y-y1);
-			        	        vec4 color = vec4(  texture2D( map_ul, pt2 ).rgb, 1.0 );
+						vec4 color = vec4(  texture2D( map_ul, pt2 ).rgb, 1.0 );
 						float val = (color.r*128.0*128.0 + color.g*128.0 + color.b)/(128.0*128.0/2.0);
-				
+
 						float fieldAngle = mod( (val*3.14159*8.0),(2.0*3.14159268))-(3.14159268);
 						float xa1 = sin(fieldAngle);
 						float ya1 = cos(fieldAngle );
@@ -332,14 +337,75 @@ fragmentShader:`
 	}
 */
 
+// this 128.0 pixel scalar is how big a single spot on the map can cover...
 
+realuv.x = 0.5 + ( (pixelx-0.5) / 128.0  + x1 );
+realuv.y = 0.5 + ( (pixely+0.5) / 128.0  + y1 );
 
-vec2 pt2 = vec2(pixelx/4.0+x1, pixely/4.0-y1);
+float xxx = trunc( (realuv.x ) * 128.0 )/128.0;
+float yyy = 1.0-trunc(( realuv.y ) * 128.0 )/128.0 + 1.0/256.0;
+
+vec2 pt2 = vec2(xxx, yyy); 
 //vec2 pt2
 vec4 p1 = texture2D(icon_loc, pt2 );
+
+const vec2 plus1 = vec2(1.0/(128.0*4.0) ,0.0);
+const vec2 plus2 = vec2(2.0/(128.0*4.0) ,0.0);
+const vec2 plus3 = vec2(3.0/(128.0*4.0) ,0.0);
+
 if( p1.a > 0.5 ){
+	// there is something in this area...
+	vec4 p2 = texture2D(icon_loc, pt2+plus1 );
+	vec4 p3 = texture2D(icon_loc, pt2+plus2 );
+
+	float valx = (p1.r*128.0*128.0 + p1.g*128.0 + p1.b)/(128.0*128.0/2.0)-0.5 ;
+
+	float valy = (p2.r + p2.g/128.0 + p2.b/(128.0*128.0))/(1.0/2.0)-0.5;
+
+	float valt = (p3.r*128.0*128.0 + p3.g*128.0 + p3.b)/(128.0*128.0/2.0);
+
+	float t_y = trunc(valt*29.0)/29.0 + 1.0/58.0;
+	float t_x = mod(valt*29.0, 1.0) + 1.0/58.0;
+
+	// this is sort of how big the icon can draw... 
+	float delx = (valx - (x1))  ;
+	float dely = (valy - (y1))  ;
+
+	float relx = (valx +(pixelx-0.5)/64.0 )  ;
+	float rely = (valy +(pixely-0.5)/64.0 )  ;
+
+
+	// think this is how big the icon data is read... 
+	realuv.x = ( + pixelx-0.5) / 1.0 + t_x ;
+	realuv.y = ( +0.5 - pixely) / 1.0 + t_y ;
+
+	vec4 p4 = texture2D( icons, realuv );
+
+	// center x of icon... 
+	
+	//if( p4.a > 0.0 )
+		gl_FragColor = p4;
+	//	gl_FragColor = p2;
+
+		gl_FragColor.r = (delx * 16.0 +0.5);
+	//gl_FragColor.g = valx*1.0;
+	//gl_FragColor.a = 1.0;
+
+	//	gl_FragColor.r = x1;
+	//	gl_FragColor.g = y1;
+
+	//gl_FragColor = p1;
+	if( !( abs(delx) < 0.002 || abs(dely) < 0.002 ) )
+	{
+		gl_FragColor.rgb = vec3(0.7,0.7,0.0);
+	}
 	
 }
+
+//gl_FragColor.b = p1.a;
+
+//gl_FragColor.rgb = vec3((pt2.x),(pt2.y),p1.a);
+
 
 vec4 p2 = texture2D(icon_loc, pt2 );
 if( p2.a > 0.5){

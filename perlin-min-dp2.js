@@ -57,11 +57,12 @@ const things = new THREE.TextureLoader().load( 'images/emoji_sprite_sheet_small.
 let height = noise( 1.0, config );
 
 
-class Thing {
+class LocationTracker {
 	icons = [];
 	slots = 0;
 	width = 64;
 	height = 64;
+	imageData = null;
 	canvas = null;
 	constructor(canvas, data) {
 		// this works with config.iconLoc
@@ -69,7 +70,8 @@ class Thing {
 
 		this.canvas = canvas;
 		this.data = data;
-		this.output = data.ctx.getImageData(0, 0, canvas.width, canvas.height);
+		this.imageData = data.ctx.getImageData(0, 0, canvas.width, canvas.height);
+		this.output = this.imageData.data;
 		this.slots = ( canvas.width *canvas.height ) / 4;  // this could just be 1...
 	
 	}
@@ -89,32 +91,38 @@ class Thing {
 		const gx = Math.floor( x/(2048/128) );
 		const gy = Math.floor( y/(2048/128) );
 
-
+		console.log( "Icon location getting added...", x, y, gx, gy, type );
 
 		//const icon = {type:type, x:x, y:y};
  
 		const pos = gx + gy*128;
 		
-
-
+		x = x / 2048;
+		y = y / 2048;
 		const output_offset = (pos*4 + 0)*4
 
-		this.output[output_offset+0] = Math.floor(x * 128); 
-		this.output[output_offset+1] = Math.floor(((x * 128)%1)*128); 
+		this.output[output_offset+0] = Math.floor(x * 128);
+		this.output[output_offset+1] = Math.floor(((x * 128)%1)*128);
 		this.output[output_offset+2] = Math.floor((x * 128*128*128)%128);
 		this.output[output_offset+3] = 255; // full alpha for visible.
 
-		this.output[output_offset+4] = Math.floor(y * 128); 
-		this.output[output_offset+5] = Math.floor(((y * 128)%1)*128); 
+		this.output[output_offset+4] = Math.floor(y * 128);
+		this.output[output_offset+5] = Math.floor(((y * 128)%1)*128);
 		this.output[output_offset+6] = Math.floor((y * 128*128*128)%128);
+		this.output[output_offset+7] = 255; // full alpha for visible.
 
-		const here = type/(64*64); // some symbol 
-			this.output[output_offset+8] = Math.floor(here * 128); 
-			this.output[output_offset+9] = Math.floor(((here * 128)%1)*128); 
+		const here = type/(29*29); // some symbol 
+			this.output[output_offset+8] = Math.floor(here * 128);
+			this.output[output_offset+9] = Math.floor(((here * 128)%1)*128);
 			this.output[output_offset+10] = Math.floor((here * 128*128*128)%128);
+			this.output[output_offset+11] = 255; // full alpha for visible.
                 
-		this.data.tex.needsUpdate = true;
 		
+	}
+	flush() {
+		this.data.ctx.putImageData(this.imageData, 0,0);
+		this.data.tex.needsUpdate = true;
+
 	}
 }
 
@@ -127,20 +135,30 @@ if( typeof document !== "undefined" ) {
        // config.ctx2 = config.canvas2.getContext("2d");
 	//debugger;
 	config.iconLoc = document.createElement( "canvas") ;
+	document.body.appendChild( config.iconLoc );
+	config.iconLoc.style.position = "absolute"
+	config.iconLoc.style.top = "80vh"
 	{
 		config.iconLocdata = { ctx:config.iconLoc.getContext("2d"), tex: new THREE.CanvasTexture( config.iconLoc )
 				, data : null };
 		config.iconLoc.width = 128*4;
 		config.iconLoc.height = 128;
-		config.things = new Thing( config.iconLoc, config.iconLocdata );
+		config.things = new LocationTracker( config.iconLoc, config.iconLocdata );
 
+		config.things.addIcon( 1, 1024, 1024 );
+	if(0)
 		for( let n = 0; n < 50; n ++ )
-			config.things.addIcon( Math.floor( 64*64*Math.random() ), Math.floor( 2048*Math.random ),Math.floor( 2048*Math.random ) );
+			config.things.addIcon( Math.floor( 64*64*Math.random() ), Math.floor( 2048*Math.random() ),Math.floor( 2048*Math.random() ) );
+		config.things.flush();
 	}
 
+	// generates the heightmap data...
 	config.inputData = [ document.createElement( "canvas") ];
+
 	let start = Date.now();
-        config.ctxInputData = config.inputData.map( canvas=>{
+
+	
+    config.ctxInputData = config.inputData.map( canvas=>{
 		const data = { ctx:canvas.getContext("2d"), tex: new THREE.CanvasTexture( canvas ), data : null };
 		canvas.width = 2048;
 		canvas.height = 2048;
@@ -167,30 +185,10 @@ function makeReelTexture( ctx ) {
 	for( let x = 0; x < 2048; x++ ) {
 		for( let y = 0; y < 2048; y++ ) {
 			var here = height.get2( x, y, 0 )/65536;
-//			var here = (Math.asin(Math.sin(x/2048 * Math.PI*64))+Math.asin(Math.sin(y/2048  * Math.PI*64)))/(Math.PI)+0.8;//height.get2( x, y, 0 )/65536;
-//d			var here = ((((x/2048 * 59)%2)-1)+(((y/2048  * 59)%2)-1))/4+0.5;//height.get2( x, y, 0 )/65536;
-			
-			//var here2 = height.get2( 2*x + 64, 2*y, 0 );
-			//var here3 = height.get2( 2*x + 128, 2*y, 0 );
-//			const output_offset = (y*32+x)*4;
 
-			//output[output_offset+0] = here * 128; 
-			//output[output_offset+1] = ((here * 128-output[output_offset+0])*128)*128; 
-			//output[output_offset+2] = ((here * 128*128-output[output_offset+1])*128*128)*128; 
-
-			//output[output_offset+0] = here * 255; 
-			//output[output_offset+1] = ((here * 255-output[output_offset+0]))*255; 
-			//output[output_offset+2] = (((here * 255-output[output_offset+0]*255)*255-output[output_offset+1])*255)*255; 
-
-			output[output_offset+0] = (here * 128)|0; 
-			output[output_offset+1] = (((here * 128)%1)*128)|0; 
+			output[output_offset+0] = ( here * 128)|0; 
+			output[output_offset+1] = ((here * 128*128)%128)|0; 
 			output[output_offset+2] = ((here * 128*128*128)%128)|0;
-
-			const test = ( output[output_offset+0]*128*128 +	(output[output_offset+1] *128) +  (output[output_offset+2]) ) / (128*128*128)
-/*			
-			if( Math.abs( here-test ) > 0.000001 ) 
-				console.log( "TEST", test, here, height.get2( x, y, 0 ), output[output_offset+0], here*128, output[output_offset+1], output[output_offset+2] );
-*/			
 			output[output_offset+3] = 255; 
 			output_offset += 4;
 		}
@@ -198,9 +196,6 @@ function makeReelTexture( ctx ) {
 
 	ctx.putImageData(_output, 0,0);
 	return _output;
-	//canvasReelTexture.needsUpdate = true;
-	//document.body.appendChild( reelTexture );
-
 }
 
 
@@ -361,18 +356,17 @@ if( viewer.dots.length )
 		const body= viewer.dots[b];
 		const speed = viewer.speeds[b];
 
-			const inputIndex = ((( 1024 +((body.position.x)/ 48.0)*2048 +wO)|0) + (( 1024 -(((body.position.y)/48)*2048)+hO )|0) * 2048 )*4;
+			const inputIndex = ((( 1024 +((body.position.x)/ 48.0)*2048 +wO)|0) + (( 1024 +(((body.position.y)/48)*2048)+hO )|0) * 2048 )*4;
 			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
-			
 
-			const hx = Math.sin((here)*8*Math.PI);
-			const hy = Math.cos((here)*8*Math.PI);
+			const hx = Math.sin((here)*8*Math.PI); // 0 is no change, and increase to 1 is toward the right.
+			const hy = Math.cos((here)*8*Math.PI); // so 0 points down.  (increasing X is increasing UV from 0 0 to 1 1 );
 
 			speed.x = /*speed.x*0.2 +*/ 0.1 * hx;
-			speed.y = /*speed.y*0.2 +*/ -0.1 * hy;
+			speed.y = /*speed.y*0.2 +*/ 0.1 * hy;
 
 	   		
-		        if( body.position.x > 0.5 || body.position.x < -0.5 || 
+		    if( body.position.x > 0.5 || body.position.x < -0.5 || 
 				body.position.y > 0.5 || body.position.y < -0.5 ){
 				body.position.x =  x/dotSpan;//(b%10) / 10-0.5;
 				body.position.y =  y/dotSpan;//Math.floor(b/10) / 10-0.5;
@@ -396,7 +390,7 @@ if( viewer.dots_inv.length )
 		const body= viewer.dots_inv[b];
 		const speed = viewer.speeds[b];
 
-			const inputIndex = ((( 1024 +((body.position.x)/ 48.0)*2048 +wO)|0) + (( 1024 -(((body.position.y)/48)*2048)+hO )|0) * 2048 )*4;
+			const inputIndex = ((( 1024 +((body.position.x)/ 48.0)*2048 +wO)|0) + (( 1024 +(((body.position.y)/48)*2048)+hO )|0) * 2048 )*4;
 			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
 			
 
@@ -404,10 +398,10 @@ if( viewer.dots_inv.length )
 			const hy = -Math.cos((here)*8*Math.PI);
 
 			speed.x = /*speed.x*0.2 +*/ 0.1 * hx;
-			speed.y = /*speed.y*0.2 +*/ -0.1 * hy;
+			speed.y = /*speed.y*0.2 +*/ 0.1 * hy;
 
 	   		
-		        if( body.position.x > 0.5 || body.position.x < -0.5 || 
+		    if( body.position.x > 0.5 || body.position.x < -0.5 || 
 				body.position.y > 0.5 || body.position.y < -0.5 ){
 				body.position.x =  x/dotSpan;//(b%10) / 10-0.5;
 				body.position.y =  y/dotSpan;//Math.floor(b/10) / 10-0.5;
@@ -416,7 +410,6 @@ if( viewer.dots_inv.length )
 				body.position.x = body.position.x + speed.x*delta;// (b%10) / 10-0.5;
 				body.position.y = body.position.y + speed.y*delta;// (b%10) / 10-0.5;
 			}
-
 	}
 }
 
@@ -435,7 +428,7 @@ if( viewer.dots_inv.length )
 			const hx2 = Math.sin(strideangle);
 			const hy2 = Math.cos(strideangle);
 
-			const dot2 = hx*hx2 + hy*hy2;
+			const dot2 = (hx*hx2 - hy*hy2);
 
 			{
 				if( dot2 < 0 )
@@ -448,7 +441,7 @@ if( viewer.dots_inv.length )
 				if( slen> 2 ) slen = 2;
 
 }
-
+slen = 0;
 
 	if( speedDown ) {
 		if( !speedUp ) {
@@ -457,15 +450,15 @@ if( viewer.dots_inv.length )
 		else
 			slen = 0;
 		}else {
-			slen += 1.5*delta;
+			slen = 1.5;//*delta;
 		}
 	}
 	if( turnDown ){
 		if( turnLeft ) {
-			strideangle += 1.59*delta;
+			strideangle -= 1.59*delta;
 		
 		}else {
-			strideangle -= 1.59*delta;
+			strideangle += 1.59*delta;
 		}
 	}
 		const hx = Math.sin(strideangle);
@@ -544,7 +537,8 @@ export function setupWorldView( canvasId ) {
 		dots_inv : [],
 		speeds : [],
 	};
-		viewer.renderer = new THREE.WebGLRenderer( { canvas: viewer.canvas } );
+	const gl = viewer.canvas.getContext('webgl2');
+		viewer.renderer = new THREE.WebGLRenderer( { canvas: viewer.canvas, context:gl } );
 
 		viewer.camera = new THREE.PerspectiveCamera( 53, viewer.canvas.width / viewer.canvas.height, 0.001, 100 );
 	
@@ -643,8 +637,8 @@ if(1) {
 
 	updateMotion(delta, viewer);
 
-	hO += hstride * ( delta / 100 );
-	wO += wstride * ( delta / 100 );
+	  hO += hstride * ( delta / 100 );
+	   wO += wstride * ( delta / 100 );
 	
 		if(wO < -1000) 
 			wO = 1000;
