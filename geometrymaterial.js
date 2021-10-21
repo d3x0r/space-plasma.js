@@ -25,14 +25,6 @@ export function getShaderMaterial() {
 	vertexShader: `
 
     #include <common>
-    #include <uv_pars_vertex>
-    #include <uv2_pars_vertex>
-    #include <envmap_pars_vertex>
-    #include <color_pars_vertex>
-    #include <morphtarget_pars_vertex>
-    #include <skinning_pars_vertex>
-    #include <logdepthbuf_pars_vertex>
-    #include <clipping_planes_pars_vertex>
 
     attribute  vec4 in_Color;
     attribute  vec4 in_FaceColor;
@@ -60,69 +52,22 @@ export function getShaderMaterial() {
 
     void main() {
 
-    	#include <uv_vertex>
-    	#include <uv2_vertex>
-    	#include <color_vertex>
-    	#include <skinbase_vertex>
-
-    	#ifdef USE_ENVMAP
-
-    	#include <beginnormal_vertex>
-    	#include <morphnormal_vertex>
-    	#include <skinnormal_vertex>
-    	#include <defaultnormal_vertex>
-
-    	#endif
-
     	#include <begin_vertex>
-    	#include <morphtarget_vertex>
-    	#include <skinning_vertex>
 
         #include <project_vertex>
     	#include <logdepthbuf_vertex>
 
     	#include <worldpos_vertex>
-    	#include <clipping_planes_vertex>
-    	#include <envmap_vertex>
 
-
-{
         ex_texCoord = uv;
 
+    }`,
 
-}
-
-    }
-    `,
 fragmentShader:`
-    uniform vec3 diffuse;
-    uniform float opacity;
-
-    #ifndef FLAT_SHADED
-
-    	varying vec3 vNormal;
-
-    #endif
-
-    #include <common>
-    #include <uv_pars_fragment>
-    #include <color_pars_fragment>
-    #include <uv2_pars_fragment>
-    #include <map_pars_fragment>
-    #include <alphamap_pars_fragment>
-    #include <aomap_pars_fragment>
-    #include <envmap_pars_fragment>
-    #include <fog_pars_fragment>
-    #include <specularmap_pars_fragment>
-    #include <logdepthbuf_pars_fragment>
-    #include <clipping_planes_pars_fragment>
 
 
     varying vec2 ex_texCoord;
-    uniform float edge_only;
 
-    uniform float logDepthBufFC;
-    varying float vFragDepth;
         uniform sampler2D map_ul;
 	uniform sampler2D icons;
 	uniform sampler2D icon_loc;
@@ -132,27 +77,17 @@ fragmentShader:`
 
     void main() {
 
-    	#include <clipping_planes_fragment>
-
-    	vec4 diffuseColor = vec4( diffuse, opacity );
-
-    	#include <logdepthbuf_fragment>
-    	#include <map_fragment>
-    	#include <color_fragment>
-    	#include <alphamap_fragment>
-    	#include <alphatest_fragment>
-    	#include <specularmap_fragment>
-	
 
         {
 		vec2 realuv;
+		vec2 realuv2;
+		vec2 realuv3;
 		// this is expecting the display to be 512x512
-		//float pixelx = ( gl_FragCoord.x ) /512.0;
-		//float pixely = ( gl_FragCoord.y ) /512.0;
 
 		float pixelx = ( ex_texCoord.x );      // left to right 0-1.0
 		float pixely = ( ex_texCoord.y );  // top to bottom 0-1.0 
 
+		// x/y  position is -1024 to 1024
 		float x1 = (x)/2048.0;  // -0.5 to 0.5
 		float y1 = -(y)/2048.0;  // -0.5 to 0.5  (Vertical inverted)
 
@@ -163,9 +98,7 @@ fragmentShader:`
 		realuv.x = 0.5 + ((pixelx-0.5) / 48.0)  + x1;
 		realuv.y = 0.5 + ((pixely-0.5) / 48.0)  + y1;
 		
-        diffuseColor = vec4(  texture2D( map_ul, realuv ).rgb, 1.0 );
-			//gl_FragColor = diffuseColor;
-			//return;
+        	vec4 diffuseColor = vec4(  texture2D( map_ul, realuv ).rgb, 1.0 );
 
 			// 'up' is from 1/2H to 0 on the texture so invert cos.
 		float dirx = sin(angle);
@@ -238,13 +171,6 @@ fragmentShader:`
 			if( sum > 2.0 ) {
 				a = lastAngle;				
 			}
-			/*
-			{
-			    		gl_FragColor = gl_FragColor+vec4(sum/100.0,0.0,  0.0,0.8);
-			    		//gl_FragColor = gl_FragColor+vec4(0.0,0.0,  0.0,0.2);
-					return;
-			}			
-			*/
 
 			float b = sin(a*3.14159*8.0);
 			float c = cos(a*3.14159*8.0);
@@ -278,14 +204,6 @@ fragmentShader:`
 				    	gl_FragColor = vec4(0.0, 0.0, delangle,1.0);
 			}
 
-			 /*
-			if(   (mod(fieldAngle - angle + 2.0*3.145269, 2.0*3.14159268 ) -3.14159268 ) /3.14159268 < 0.0 ) {
-			    	gl_FragColor = vec4(delangle,0.0,0.0,1.0);
-			} else {
-			    		gl_FragColor = vec4(0.0, delangle, 0.0,1.0);
-			}
-			*/
-
 
 			if( dot < 0.0 ) {
 				if( dot < -0.5 ) 
@@ -300,7 +218,7 @@ fragmentShader:`
 
 
 	// --------------------- This bit of code modifies the color according to the direction looking
-	                
+	/*                
 				if( dot2 < 0.0 ) {
 					if( angle2 < 0.0 ) {
 						gl_FragColor.g += 0.4 - (1.0+dot2)*0.4;
@@ -323,10 +241,11 @@ fragmentShader:`
 		gl_FragColor.g = 1.0;
 		gl_FragColor.b = 1.0;
 	}
-	else */if( sum > 1.0 ) {
-		gl_FragColor.r = gl_FragColor.r * (1.0-(sum-1.0)/10.0);
-		gl_FragColor.g = gl_FragColor.g * (1.0-(sum-1.0)/10.0);
-		gl_FragColor.b = gl_FragColor.b * (1.0-(sum-1.0)/10.0);
+	else */
+	if( sum > 1.0 ) {
+//		gl_FragColor.r = gl_FragColor.r * (1.0-(sum-1.0)/10.0);
+//		gl_FragColor.g = gl_FragColor.g * (1.0-(sum-1.0)/10.0);
+//		gl_FragColor.b = gl_FragColor.b * (1.0-(sum-1.0)/10.0);
 	}
 /*
 	if( 0.0 > 0.0 ) {
@@ -339,11 +258,13 @@ fragmentShader:`
 
 // this 128.0 pixel scalar is how big a single spot on the map can cover...
 
-realuv.x = 0.5 + ( (pixelx-0.5) / 128.0  + x1 );
-realuv.y = 0.5 + ( (pixely+0.5) / 128.0  + y1 );
+realuv2.x = 0.5 + ( (pixelx-0.5) / 128.0  + x1 );
+realuv2.y = 0.5 + ( (pixely+0.5) / 128.0  + y1 );
 
-float xxx = trunc( (realuv.x ) * 128.0 )/128.0;
-float yyy = 1.0-trunc(( realuv.y ) * 128.0 )/128.0 + 1.0/256.0;
+
+// so this is the 128 scalar that determins where the thig is
+float xxx = trunc( (realuv2.x ) * 128.0 )/128.0;
+float yyy = 1.0-trunc(( realuv2.y ) * 128.0 )/128.0 + 1.0/256.0;
 
 vec2 pt2 = vec2(xxx, yyy); 
 //vec2 pt2
@@ -353,6 +274,9 @@ const vec2 plus1 = vec2(1.0/(128.0*4.0) ,0.0);
 const vec2 plus2 = vec2(2.0/(128.0*4.0) ,0.0);
 const vec2 plus3 = vec2(3.0/(128.0*4.0) ,0.0);
 
+
+// this is a span of 128 icons, and only one of them should apply
+// 
 if( p1.a > 0.5 ){
 	// there is something in this area...
 	vec4 p2 = texture2D(icon_loc, pt2+plus1 );
@@ -367,27 +291,35 @@ if( p1.a > 0.5 ){
 	float t_y = trunc(valt*29.0)/29.0 + 1.0/58.0;
 	float t_x = mod(valt*29.0, 1.0) + 1.0/58.0;
 
-	// this is sort of how big the icon can draw... 
-	float delx = (valx - (x1))  ;
-	float dely = (valy - (y1))  ;
 
-	float relx = (valx +(pixelx-0.5)/64.0 )  ;
-	float rely = (valy +(pixely-0.5)/64.0 )  ;
+	// this is sort of how big the icon can draw... 
+//	float delx = (valx - (x1))  ;
+//	float dely = (valy - (y1))  ;
+
+	float relx = (valx +(pixelx-0.5)/(1.0*1.0) )  ;
+	float rely = (valy +(pixely-0.5)/(1.0*1.0) )  ;
+
+	if( abs( rely + y1*128.0 ) < 0.1 ) gl_FragColor.r=1.0;
+	if( abs( relx + x1*128.0 ) < 0.1 ) gl_FragColor.g=1.0;
 
 
 	// think this is how big the icon data is read... 
-	realuv.x = ( + pixelx-0.5) / 1.0 + t_x ;
-	realuv.y = ( +0.5 - pixely) / 1.0 + t_y ;
+	float iconZoom = 1.0;
 
-	vec4 p4 = texture2D( icons, realuv );
+	realuv3.x = (x1 + pixelx-0.5) / iconZoom + t_x ;
+	realuv3.y = (y1 +0.5 - pixely) / iconZoom + t_y ;
+
+	vec4 p4 = texture2D( icons, realuv3 );
+	if( p4.a < 0.01 ) return;
 
 	// center x of icon... 
 	
 	//if( p4.a > 0.0 )
-		gl_FragColor = p4;
+		gl_FragColor = (1.0-p4.a)*gl_FragColor + p4.a*p4;
+		gl_FragColor.a = 1.0;
 	//	gl_FragColor = p2;
 
-		gl_FragColor.r = (delx * 16.0 +0.5);
+//		gl_FragColor.r = (delx * 16.0 +0.5);
 	//gl_FragColor.g = valx*1.0;
 	//gl_FragColor.a = 1.0;
 
@@ -395,9 +327,9 @@ if( p1.a > 0.5 ){
 	//	gl_FragColor.g = y1;
 
 	//gl_FragColor = p1;
-	if( !( abs(delx) < 0.002 || abs(dely) < 0.002 ) )
+	//if( !( abs(delx) < 0.002 || abs(dely) < 0.002 ) )
 	{
-		gl_FragColor.rgb = vec3(0.7,0.7,0.0);
+	//	gl_FragColor.rgb = vec3(0.7,0.7,0.0);
 	}
 	
 }

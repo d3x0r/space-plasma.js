@@ -145,7 +145,8 @@ if( typeof document !== "undefined" ) {
 		config.iconLoc.height = 128;
 		config.things = new LocationTracker( config.iconLoc, config.iconLocdata );
 
-		config.things.addIcon( 1, 1024, 1024 );
+//		config.things.addIcon( 1, 1024, 1024 );
+		config.things.addIcon( 2, 1024, 1024 );
 	if(0)
 		for( let n = 0; n < 50; n ++ )
 			config.things.addIcon( Math.floor( 64*64*Math.random() ), Math.floor( 2048*Math.random() ),Math.floor( 2048*Math.random() ) );
