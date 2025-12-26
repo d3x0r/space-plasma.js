@@ -5,19 +5,6 @@ import * as THREE from "./three.js/three.module.js"
 import {getShaderBuffer} from "./geometrybuffer.js"
 import {getShaderMaterial} from "./geometrymaterial.js"
 
-/*
-import {EffectComposer} from "./three.js/composer/EffectComposer.js"
-import {SavePass} from "./three.js/composer/SavePass.js"
-import {RenderPass} from "./three.js/composer/RenderPass.js"
-import {ShaderPass} from "./three.js/composer/ShaderPass.js"
-import {BlendShader} from "./three.js/shaders/BlendShader.js"
-import {CopyShader} from "./three.js/shaders/CopyShader.js"
-*/
-
-//import {Vector3Pool,Vector4Pool,THREE_consts,Motion} from "./three.js/personalFill.mjs"
-//import {NaturalCamera} from "./three.js/NaturalCamera.js"
-
-//import {lnQuat} from "./lnQuat.js"
 
 import {noise} from "./perlin-sphere-3.js"
 
@@ -85,13 +72,29 @@ class LocationTracker {
 			this.output[output_offset+3] = 0; 
 		
 	}
+	setIcon( type, x, y ) {
+
+		const gx = Math.floor( x/(2048/128) );
+		const gy = Math.floor( y/(2048/128) );
+
+		const pos = gx + gy*128;
+		const output_offset = (pos*4 + 0)*4
+
+		const here = type/128; // some symbol 
+			this.output[output_offset+8] = Math.floor(here %1 * 256);
+			this.output[output_offset+9] = Math.floor(((here /256 )%1)*256);
+			this.output[output_offset+10] = Math.floor((here /(256*256)%1)*256);
+			this.output[output_offset+11] = 255; // full alpha for visible.
+			//console.log( 'generate:', type, this.output[output_offset+8], this.output[output_offset+9], this.output[output_offset+10] );
+		
+	}
 	addIcon( type, x, y ) {
 		// do these move?
 		
 		const gx = Math.floor( x/(2048/128) );
 		const gy = Math.floor( y/(2048/128) );
 
-		console.log( "Icon location getting added...", x, y, gx, gy, type );
+		//console.log( "Icon location getting added...", x, y, gx, gy, type );
 
 		//const icon = {type:type, x:x, y:y};
  
@@ -111,11 +114,12 @@ class LocationTracker {
 		this.output[output_offset+6] = Math.floor((y * 128*128*128)%128);
 		this.output[output_offset+7] = 255; // full alpha for visible.
 
-		const here = type/(29*29); // some symbol 
-			this.output[output_offset+8] = Math.floor(here * 128);
-			this.output[output_offset+9] = Math.floor(((here * 128)%1)*128);
-			this.output[output_offset+10] = Math.floor((here * 128*128*128)%128);
+		const here = type/128; // some symbol 
+			this.output[output_offset+8] = Math.floor(here %1 * 256);
+			this.output[output_offset+9] = Math.floor(((here /256 )%1)*256);
+			this.output[output_offset+10] = Math.floor((here /(256*256)%1)*256);
 			this.output[output_offset+11] = 255; // full alpha for visible.
+			//console.log( 'generate:', pos, output_offset, this.output[output_offset+8], this.output[output_offset+9], this.output[output_offset+10] );
                 
 		
 	}
@@ -146,8 +150,8 @@ if( typeof document !== "undefined" ) {
 		config.things = new LocationTracker( config.iconLoc, config.iconLocdata );
 
 //		config.things.addIcon( 1, 1024, 1024 );
-		config.things.addIcon( 2, 1024, 1024 );
-	if(0)
+		config.things.addIcon( 257, 1024, 1024 );
+	//if(0)
 		for( let n = 0; n < 50; n ++ )
 			config.things.addIcon( Math.floor( 64*64*Math.random() ), Math.floor( 2048*Math.random() ),Math.floor( 2048*Math.random() ) );
 		config.things.flush();
@@ -172,7 +176,7 @@ if( typeof document !== "undefined" ) {
 		return data;
 	});
 	
-	config.viewer = setupWorldView( "testSurface2" );
+	config.viewer = await setupWorldView( "testSurface2" );
 
 } else {
 	config.lib = true;
@@ -357,11 +361,11 @@ if( viewer.dots.length )
 		const body= viewer.dots[b];
 		const speed = viewer.speeds[b];
 
-			const inputIndex = ((( 1024 +((body.position.x)/ 48.0)*2048 +wO)|0) + (( 1024 +(((body.position.y)/48)*2048)+hO )|0) * 2048 )*4;
+			const inputIndex = ((( 1024 +((body.position.x)/ 32.0)*2048 +wO)|0) + (( 1024 +(((body.position.y)/32)*2048)+hO )|0) * 2048 )*4;
 			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
 
-			const hx = Math.sin((here)*8*Math.PI); // 0 is no change, and increase to 1 is toward the right.
-			const hy = Math.cos((here)*8*Math.PI); // so 0 points down.  (increasing X is increasing UV from 0 0 to 1 1 );
+			const hx = Math.cos((here)*8*Math.PI); // 0 is no change, and increase to 1 is toward the right.
+			const hy = -Math.sin((here)*8*Math.PI); // so 0 points down.  (increasing X is increasing UV from 0 0 to 1 1 );
 
 			speed.x = /*speed.x*0.2 +*/ 0.1 * hx;
 			speed.y = /*speed.y*0.2 +*/ 0.1 * hy;
@@ -395,8 +399,8 @@ if( viewer.dots_inv.length )
 			let here = (_input[ inputIndex+0]*128*128 + _input[ inputIndex+1] * 128 + _input[ inputIndex+2] )/(128*128*128);
 			
 
-			const hx = -Math.sin((here)*8*Math.PI);
-			const hy = -Math.cos((here)*8*Math.PI);
+			const hx = -Math.cos((here)*8*Math.PI);
+			const hy = Math.sin((here)*8*Math.PI);
 
 			speed.x = /*speed.x*0.2 +*/ 0.1 * hx;
 			speed.y = /*speed.y*0.2 +*/ 0.1 * hy;
@@ -517,7 +521,7 @@ document.body.addEventListener( "keyup", (evt)=> {
 
 
 
-export function setupWorldView( canvasId ) {
+export async function setupWorldView( canvasId ) {
 	var viewer = {
 		canvas: document.getElementById( canvasId ),
 		renderer : null,
@@ -612,7 +616,7 @@ if(1) {
 	const plane = new THREE.Mesh( planeGeom, material );
 //	viewer.scene.add( plane );
 
-	viewer.shaderMat = getShaderMaterial();
+	viewer.shaderMat = await getShaderMaterial();
 	viewer.shaderMat.uniforms.map_ul.value = config.ctxInputData[0].tex;
         viewer.shaderMat.uniforms.icons.value = things;
         viewer.shaderMat.uniforms.icon_loc.value = config.iconLocdata.tex;
@@ -630,12 +634,18 @@ if(1) {
 	
 
 	let start = 0;
-	let sec = 0;
+	let sec =  5;
+
 	function animate(ts) {
 		if( !start ) start = ts;
 		const delta = ts-start;
 		start = ts;
-
+		const sc = Math.floor(ts/1000);
+		if( sc > sec ) {
+			config.things.setIcon( Math.floor( (29*29-256)*Math.random()+256 ), 1024, 1024 );
+			config.things.flush();
+			sec=sc;
+		}
 	updateMotion(delta, viewer);
 
 	  hO += hstride * ( delta / 100 );
@@ -651,23 +661,6 @@ if(1) {
 			hO = -1000;
 
 
-		if(0)
-		if( ((start / 1000)|0) != sec ) {
-			console.log( "camera:", viewer.camera.position );
-			sec = (start / 1000)|0;
-		}
-
-	if(0) {
-		if( !viewer.target ) {
-			renderer.render(fakeScene_a, fakeCamera, viewer.renderTarget_a);
-        		viewer.shaderMat.uniforms.data.value = viewer.renderTarget_a;
-		}else {
-			renderer.render(fakeScene_b, fakeCamera, viewer.renderTarget_b);
-        		viewer.shaderMat.uniforms.data.value = viewer.renderTarget_b;
-		}
-		viewer.target = 1-viewer.target;
-	}
-
         	viewer.shaderMat.uniforms.x.value = wO;
         	viewer.shaderMat.uniforms.y.value = hO;
         	viewer.shaderMat.uniforms.angle.value = strideangle;
@@ -682,45 +675,6 @@ if(1) {
                 requestAnimationFrame(animate);
 	}
 	requestAnimationFrame(animate);
-
-
-/*
-viewer.composer = new EffectComposer(viewer.renderer);
-
-// render pass
-const renderPass = new RenderPass(viewer.scene, viewer.camera);
-
-const renderTargetParameters = {
-	minFilter: THREE.LinearFilter,
-	magFilter: THREE.LinearFilter,
-	stencilBuffer: false
-};
-
-// save pass
-const savePass = new SavePass(
-	new THREE.WebGLRenderTarget(
-		viewer.canvas.width,
-		viewer.canvas.height,
-		renderTargetParameters
-	)
-);
-
-// blend pass
-const blendPass = new ShaderPass(BlendShader, "tDiffuse1");
-blendPass.uniforms["tDiffuse2"].value = savePass.renderTarget.texture;
-blendPass.uniforms["mixRatio"].value = 0.8;
-
-// output pass
-const outputPass = new ShaderPass(CopyShader);
-outputPass.renderToScreen = true;
-
-// adding passes to composer
-viewer.composer.addPass(renderPass);
-viewer.composer.addPass(blendPass);
-viewer.composer.addPass(savePass);
-viewer.composer.addPass(outputPass);
-*/
-
 
 	return viewer;
 }
